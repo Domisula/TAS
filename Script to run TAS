@@ -1,0 +1,101 @@
+local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+-- ===== FILE PATH =====
+local FileName = "YOUR TAS FILE LOCATION"
+
+-- ===== STATE =====
+local PlaybackData = {}
+local CurrentFrame = 1
+local Playing = false
+
+-- ===== [GUI] CREATE FEEDBACK GUI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "TASGui"
+gui.ResetOnSpawn = false
+gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0, 300, 0, 50)
+statusLabel.Position = UDim2.new(0, 10, 0, 10)
+statusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.Font = Enum.Font.SourceSansBold
+statusLabel.TextSize = 20
+statusLabel.Text = "TAS Status: Idle"
+statusLabel.Parent = gui
+
+
+-- ===== FUNCTIONS =====
+
+local function UpdateStatus(text, color)
+    statusLabel.Text = "TAS Status: " .. text
+    statusLabel.BackgroundColor3 = color or Color3.fromRGB(30, 30, 30)
+end
+
+local function SetCharacterState(frame)
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChildOfClass("Humanoid") then
+        local root = character.HumanoidRootPart
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+        root.CFrame = CFrame.new(unpack(frame.CCFrame))
+        workspace.CurrentCamera.CFrame = CFrame.new(unpack(frame.CCameraCFrame))
+        root.Velocity = Vector3.new(unpack(frame.VVelocity))
+        humanoid:ChangeState(frame.SState)
+    end
+end
+
+local function LoadTAS()
+    if isfile(FileName) then
+        local data = readfile(FileName)
+        PlaybackData = HttpService:JSONDecode(data)
+        print("TAS loaded! Frames: " .. tostring(#PlaybackData))
+        UpdateStatus("Loaded", Color3.fromRGB(60, 120, 255)) -- [GUI]
+    else
+        warn("TAS file not found: " .. FileName)
+        UpdateStatus("File Not Found", Color3.fromRGB(255, 60, 60)) -- [GUI]
+    end
+end
+
+-- ===== PLAYBACK LOOP =====
+
+RunService.RenderStepped:Connect(function()
+    if Playing and PlaybackData[CurrentFrame] then
+        SetCharacterState(PlaybackData[CurrentFrame])
+        CurrentFrame += 1
+
+        if CurrentFrame > #PlaybackData then
+            print("TAS playback finished.")
+            UpdateStatus("Finished", Color3.fromRGB(0, 255, 100)) -- [GUI]
+            Playing = false
+        end
+    end
+end)
+
+-- ===== CONTROLS =====
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.P then
+        if not Playing then
+            LoadTAS()
+            if #PlaybackData > 0 then
+                print("Starting TAS playback...")
+                UpdateStatus("Playing", Color3.fromRGB(255, 170, 0)) -- [GUI]
+                CurrentFrame = 1
+                Playing = true
+            end
+        else
+            print("Stopping TAS playback.")
+            UpdateStatus("Stopped", Color3.fromRGB(200, 100, 100)) -- [GUI]
+            Playing = false
+        end
+    end
+end)
