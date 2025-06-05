@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
 -- ===== FILE PATH =====
-local FileName = "YOUR TAS FILE LOCATION"
+local FileName = "https://raw.githubusercontent.com/Domisula/TAS/refs/heads/main/Bruh_Moon--Flood_Escape_But_Something_Ain't_Right.txt"
 
 -- ===== STATE =====
 local PlaybackData = {}
@@ -52,14 +52,24 @@ local function SetCharacterState(frame)
 end
 
 local function LoadTAS()
-    if isfile(FileName) then
-        local data = readfile(FileName)
-        PlaybackData = HttpService:JSONDecode(data)
-        print("TAS loaded! Frames: " .. tostring(#PlaybackData))
-        UpdateStatus("Loaded", Color3.fromRGB(60, 120, 255)) -- [GUI]
+    if not http_request then
+        warn("Your executor does not support http_request.")
+        UpdateStatus("No HTTP Support", Color3.fromRGB(255, 60, 60))
+        return
+    end
+
+    local response = http_request({
+        Url = FileName,
+        Method = "GET"
+    })
+
+    if response and response.Body then
+        PlaybackData = HttpService:JSONDecode(response.Body)
+        print("TAS loaded from URL! Frames: " .. tostring(#PlaybackData))
+        UpdateStatus("Loaded", Color3.fromRGB(60, 120, 255))
     else
-        warn("TAS file not found: " .. FileName)
-        UpdateStatus("File Not Found", Color3.fromRGB(255, 60, 60)) -- [GUI]
+        warn("Failed to load TAS from URL.")
+        UpdateStatus("HTTP Error", Color3.fromRGB(255, 60, 60))
     end
 end
 
@@ -99,3 +109,4 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
     end
 end)
+
